@@ -1,0 +1,7 @@
+# todo-mcp 配置文件
+
+# 计划文件根目录
+todo_root: ~/todo
+
+# 默认提前提醒天数
+default_reminder_days: 3
