@@ -1,5 +1,6 @@
 # todo-mcp/src/todo_mcp/parser/__init__.py
 """Markdown parser for todo files."""
 from .reader import MarkdownReader
+from .writer import MarkdownWriter
 
-__all__ = ["MarkdownReader"]
+__all__ = ["MarkdownReader", "MarkdownWriter"]
