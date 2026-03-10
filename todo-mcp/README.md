@@ -37,6 +37,22 @@ default_reminder_days: 3  # 默认提前提醒天数
 }
 ```
 
+### 在 Cherry Studio 中配置
+
+1. 打开设置 → MCP 服务器
+2. 点击「添加服务器」
+3. 填写配置：
+   - 服务器名称: `todo`
+   - 类型: `STDIO`
+   - 命令: `uv`
+   - 参数: `run`, `todo-mcp` (每行一个)
+   - 工作目录: `/your/path/to/todo-mcp`
+4. 保存并重启
+
+### 其他 MCP 客户端
+
+参见 [docs/mcp-clients.md](./docs/mcp-clients.md) 获取 Claude Desktop、Cline、Windsurf、Continue 等客户端的详细配置说明。
+
 ### 可用工具
 
 - `add_task` - 添加任务
