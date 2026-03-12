@@ -108,6 +108,61 @@ uv run todo-mcp --http --port 33333 --host 127.0.0.1
 - `--port <端口>` - 指定端口 (默认 8000)
 - `--host <地址>` - 指定绑定地址 (默认 127.0.0.1)
 
+### OpenAI 兼容 API
+
+todo-mcp 提供完全兼容 OpenAI 格式的 API 端点,可以直接使用 OpenAI SDK 调用。
+
+#### 端点
+
+| 端点 | 方法 | 描述 |
+|------|------|------|
+| `/v1/chat/completions` | POST | 聊天补全 |
+| `/v1/models` | GET | 列出可用模型 |
+| `/v1/models/{model_id}` | GET | 获取模型信息 |
+
+#### 使用 OpenAI SDK
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:8000/v1",
+    api_key="dummy"  # 不需要真实 key
+)
+
+response = client.chat.completions.create(
+    model="todo-agent",
+    messages=[
+        {"role": "user", "content": "今天有什么任务？"}
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+#### 使用 curl
+
+```bash
+curl http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "todo-agent",
+    "messages": [{"role": "user", "content": "添加任务：完成报告"}]
+  }'
+```
+
+#### 会话管理
+
+通过 `user` 参数指定会话 ID：
+
+```python
+response = client.chat.completions.create(
+    model="todo-agent",
+    messages=[{"role": "user", "content": "继续刚才的对话"}],
+    user="my-session-id"  # 用于会话隔离
+)
+```
+
 ### 智能提醒
 
 todo-mcp 支持智能提醒功能，可以在任务即将到期、任务过多时主动提醒。
