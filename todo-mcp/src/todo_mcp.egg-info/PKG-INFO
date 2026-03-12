@@ -1,3 +1,21 @@
+Metadata-Version: 2.4
+Name: todo-mcp
+Version: 0.2.0
+Summary: Personal plan management agent
+Requires-Python: >=3.13
+Description-Content-Type: text/markdown
+Requires-Dist: mcp>=1.26.0
+Requires-Dist: pydantic>=2.12.5
+Requires-Dist: pytest>=9.0.2
+Requires-Dist: pytest-asyncio>=1.3.0
+Requires-Dist: python-dateutil>=2.9.0.post0
+Requires-Dist: starlette>=0.40.0
+Requires-Dist: uvicorn>=0.30.0
+Requires-Dist: langchain>=0.3.0
+Requires-Dist: langchain-openai>=0.2.0
+Requires-Dist: click>=8.0.0
+Requires-Dist: fastapi>=0.115.0
+
 # todo-mcp
 
 一个用于管理个人计划的 MCP Server。

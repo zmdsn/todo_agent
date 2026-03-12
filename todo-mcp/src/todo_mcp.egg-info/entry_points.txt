@@ -1,0 +1,3 @@
+[console_scripts]
+todo-agent = todo_mcp.cli.main:main
+todo-mcp = todo_mcp.server:main
