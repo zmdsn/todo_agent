@@ -2,6 +2,7 @@
 
 import time
 import pytest
+from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from todo_mcp.api.openai_compat import (
     ChatMessage,
@@ -187,3 +188,80 @@ class TestModelsEndpoint:
         """Test getting a non-existent model."""
         response = client.get("/v1/models/nonexistent")
         assert response.status_code == 404
+
+
+class TestChatCompletions:
+    """Test /v1/chat/completions endpoint."""
+
+    def test_chat_completions_request_format(self, client):
+        """Test chat completions accepts OpenAI format."""
+        with patch("todo_mcp.api.openai_compat.get_agent") as mock_get_agent:
+            mock_agent = MagicMock()
+            mock_get_agent.return_value = mock_agent
+
+            with patch("todo_mcp.api.openai_compat.run_agent") as mock_run:
+                mock_run.return_value = "测试响应"
+
+                response = client.post(
+                    "/v1/chat/completions",
+                    json={
+                        "model": "todo-agent",
+                        "messages": [{"role": "user", "content": "今天有什么任务？"}]
+                    }
+                )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["object"] == "chat.completion"
+        assert data["model"] == "todo-agent"
+        assert len(data["choices"]) == 1
+        assert data["choices"][0]["message"]["role"] == "assistant"
+
+    def test_chat_completions_response_structure(self, client):
+        """Test response has all required OpenAI fields."""
+        with patch("todo_mcp.api.openai_compat.get_agent") as mock_get_agent:
+            mock_agent = MagicMock()
+            mock_get_agent.return_value = mock_agent
+
+            with patch("todo_mcp.api.openai_compat.run_agent") as mock_run:
+                mock_run.return_value = "响应内容"
+
+                response = client.post(
+                    "/v1/chat/completions",
+                    json={
+                        "model": "todo-agent",
+                        "messages": [{"role": "user", "content": "测试"}]
+                    }
+                )
+
+        data = response.json()
+        assert "id" in data
+        assert data["id"].startswith("chatcmpl-")
+        assert "created" in data
+        assert isinstance(data["created"], int)
+        assert "usage" in data
+        assert "choices" in data
+
+    def test_chat_completions_with_user_field(self, client):
+        """Test user field maps to session_id."""
+        with patch("todo_mcp.api.openai_compat.get_agent") as mock_get_agent:
+            mock_agent = MagicMock()
+            mock_get_agent.return_value = mock_agent
+
+            with patch("todo_mcp.api.openai_compat.run_agent") as mock_run:
+                mock_run.return_value = "响应"
+
+                response = client.post(
+                    "/v1/chat/completions",
+                    json={
+                        "model": "todo-agent",
+                        "messages": [{"role": "user", "content": "测试"}],
+                        "user": "custom-session"
+                    }
+                )
+
+        assert response.status_code == 200
+        mock_run.assert_called_once()
+        # The third argument (session_manager) has the session
+        call_args = mock_run.call_args
+        assert "custom-session" in str(call_args)

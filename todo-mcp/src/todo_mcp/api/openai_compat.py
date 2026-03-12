@@ -1,11 +1,27 @@
 """OpenAI-compatible data models for chat completions API."""
 
+import time
+import uuid
 from typing import Literal, Optional
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, HTTPException
 
+from todo_mcp.agent import create_todo_agent, run_agent, session_manager
+
 
 router = APIRouter(prefix="/v1", tags=["OpenAI Compatible"])
+
+
+# Global agent instance
+_agent = None
+
+
+def get_agent():
+    """获取或创建 agent 实例。"""
+    global _agent
+    if _agent is None:
+        _agent = create_todo_agent()
+    return _agent
 
 
 class ChatMessage(BaseModel):
@@ -118,3 +134,34 @@ async def get_model(model_id: str) -> dict:
         "created": 1700000000,
         "owned_by": "local"
     }
+
+
+@router.post("/chat/completions", response_model=OpenAIChatResponse)
+async def chat_completions(request: OpenAIChatRequest) -> OpenAIChatResponse:
+    """OpenAI 兼容的聊天补全端点。"""
+    # 转换消息
+    session_id, user_message = convert_openai_messages(request.messages)
+
+    # 使用请求中的 user 字段作为 session_id
+    if request.user:
+        session_id = request.user
+
+    # 调用现有 Agent
+    agent = get_agent()
+    response_text = run_agent(agent, user_message, session_manager, session_id)
+
+    # 构建 OpenAI 格式响应
+    return OpenAIChatResponse(
+        id=f"chatcmpl-{uuid.uuid4().hex[:24]}",
+        object="chat.completion",
+        created=int(time.time()),
+        model=request.model,
+        choices=[
+            Choice(
+                index=0,
+                message=ChatMessage(role="assistant", content=response_text),
+                finish_reason="stop"
+            )
+        ],
+        usage=Usage()
+    )
