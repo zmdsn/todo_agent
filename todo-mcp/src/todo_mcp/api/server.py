@@ -45,17 +45,18 @@ def get_agent():
     return _agent
 
 
-def create_app(model: str = "qwen2.5", base_url: str = "http://localhost:11434/v1", temperature: float = 0.7):
+def create_app(model: str = "qwen2.5", base_url: str = "http://localhost:11434/v1", temperature: float = 0.7, api_key: str = "dummy"):
     """创建 FastAPI 应用。"""
     global _config
     _config = {
         "model": model,
         "base_url": base_url,
-        "temperature": temperature
+        "temperature": temperature,
+        "api_key": api_key
     }
 
     # 同步配置到 OpenAI 兼容层
-    set_openai_config(base_url, model, temperature)
+    set_openai_config(base_url, model, temperature, api_key)
 
     app = FastAPI(
         title="Todo Agent API",

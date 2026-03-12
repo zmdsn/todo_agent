@@ -87,7 +87,8 @@ def chat(model: str, base_url: str, temperature: float):
 @click.option("--host", "-h", default="127.0.0.1", help="绑定地址")
 @click.option("--model", "-m", default="qwen2.5", help="LLM 模型名称")
 @click.option("--base-url", "-u", default="http://localhost:11434/v1", help="LLM API 地址")
-def serve(port: int, host: str, model: str, base_url: str):
+@click.option("--api-key", "-k", default="dummy", help="LLM API 密钥")
+def serve(port: int, host: str, model: str, base_url: str, api_key: str):
     """启动 HTTP API 服务。"""
     import uvicorn
     from todo_mcp.api.server import create_app
@@ -97,7 +98,7 @@ def serve(port: int, host: str, model: str, base_url: str):
     click.echo(f"   模型: {model}")
     click.echo(f"   API: {base_url}")
 
-    app = create_app(model=model, base_url=base_url)
+    app = create_app(model=model, base_url=base_url, api_key=api_key)
     uvicorn.run(app, host=host, port=port)
 
 

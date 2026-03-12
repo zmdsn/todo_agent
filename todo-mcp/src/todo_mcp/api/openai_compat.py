@@ -17,17 +17,19 @@ _agent = None
 _config = {
     "base_url": "http://localhost:11434/v1",
     "model": "qwen2.5",
-    "temperature": 0.7
+    "temperature": 0.7,
+    "api_key": "dummy"
 }
 
 
-def set_config(base_url: str, model: str, temperature: float = 0.7):
+def set_config(base_url: str, model: str, temperature: float = 0.7, api_key: str = "dummy"):
     """设置 Agent 配置。"""
     global _config, _agent
     _config = {
         "base_url": base_url,
         "model": model,
-        "temperature": temperature
+        "temperature": temperature,
+        "api_key": api_key
     }
     # 重置 agent 以使用新配置
     _agent = None
@@ -40,7 +42,8 @@ def get_agent():
         _agent = create_todo_agent(
             base_url=_config["base_url"],
             model=_config["model"],
-            temperature=_config["temperature"]
+            temperature=_config["temperature"],
+            api_key=_config["api_key"]
         )
     return _agent
 
