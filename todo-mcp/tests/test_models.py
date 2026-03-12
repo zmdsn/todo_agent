@@ -19,6 +19,14 @@ def test_config_defaults():
     assert config.default_reminder_days == 3
 
 
+def test_config_task_split_defaults():
+    """测试任务拆分配置默认值"""
+    config = Config()
+    assert config.task_split_threshold_minutes == 120
+    assert config.task_split_target_minutes == 60
+    assert config.auto_complete_parent == True
+
+
 def test_task_with_parent():
     """测试带父任务的任务"""
     task = Task(
