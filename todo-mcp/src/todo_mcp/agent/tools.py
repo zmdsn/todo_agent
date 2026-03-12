@@ -199,10 +199,28 @@ def update_task(task_id: str, status: Optional[str] = None) -> str:
                 return f"错误: 找不到任务文件"
 
             writer = MarkdownWriter(file_path)
+            reader = MarkdownReader(file_path)
 
             if status:
                 new_status = TaskStatus.COMPLETED if status.lower() in ["completed", "done", "完成"] else TaskStatus.PENDING
                 success = writer.update_task_status(task_id, new_status)
+
+                if success and new_status == TaskStatus.COMPLETED and config.auto_complete_parent:
+                    # 检查是否需要自动完成父任务
+                    tasks = reader.read_tasks()
+                    task = next((t for t in tasks if t.id == task_id), None)
+
+                    if task and task.parent_id:
+                        parent = next((t for t in tasks if t.id == task.parent_id), None)
+                        if parent:
+                            # 检查所有子任务是否完成
+                            all_subtasks = [t for t in tasks if t.parent_id == parent.id]
+                            all_completed = all(t.status == TaskStatus.COMPLETED for t in all_subtasks)
+
+                            if all_completed:
+                                writer.update_task_status(parent.id, TaskStatus.COMPLETED)
+                                return f"任务状态已更新为: {new_status.value}\n🎉 所有子任务已完成，父任务「{parent.content}」已自动标记为完成！"
+
                 if success:
                     return f"任务状态已更新为: {new_status.value}"
                 else:
