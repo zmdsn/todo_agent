@@ -191,6 +191,8 @@ async def list_models() -> dict:
                 "object": "model",
                 "created": 1700000000,
                 "owned_by": "local",
+                "root": "todo-agent",
+                "parent": None,
                 "permission": [
                     {
                         "id": "modelperm-todo-agent",
@@ -207,6 +209,24 @@ async def list_models() -> dict:
                         "is_blocking": False
                     }
                 ]
+            },
+            {
+                "id": "gpt-3.5-turbo",
+                "object": "model",
+                "created": 1700000000,
+                "owned_by": "local",
+                "root": "gpt-3.5-turbo",
+                "parent": None,
+                "permission": []
+            },
+            {
+                "id": "gpt-4",
+                "object": "model",
+                "created": 1700000000,
+                "owned_by": "local",
+                "root": "gpt-4",
+                "parent": None,
+                "permission": []
             }
         ]
     }
