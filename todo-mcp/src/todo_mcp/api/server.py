@@ -56,10 +56,9 @@ def create_app(model: str = "qwen2.5", base_url: str = "http://localhost:11434/v
         "api_key": api_key
     }
 
-    # Set server API key (from param or env var)
-    effective_key = server_api_key or os.environ.get("TODO_API_KEY")
-    if effective_key:
-        set_server_api_key(effective_key)
+    # Set server API key (from param, env var, or default)
+    effective_key = server_api_key or os.environ.get("TODO_API_KEY") or "happy"
+    set_server_api_key(effective_key)
 
     # 同步配置到 OpenAI 兼容层
     set_openai_config(base_url, model, temperature, api_key)

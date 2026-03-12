@@ -273,8 +273,11 @@ class TestServerIntegration:
     @pytest.fixture
     def server_client(self):
         from todo_mcp.api.server import create_app
+        from todo_mcp.api.openai_compat import set_server_api_key
         from fastapi.testclient import TestClient
         app = create_app()
+        # Clear the default API key for integration tests
+        set_server_api_key(None)
         return TestClient(app)
 
     def test_openai_routes_included(self, server_client):
