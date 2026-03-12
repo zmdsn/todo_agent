@@ -12,15 +12,36 @@ from todo_mcp.agent import create_todo_agent, run_agent, session_manager
 router = APIRouter(prefix="/v1", tags=["OpenAI Compatible"])
 
 
-# Global agent instance
+# Global agent instance and config
 _agent = None
+_config = {
+    "base_url": "http://localhost:11434/v1",
+    "model": "qwen2.5",
+    "temperature": 0.7
+}
+
+
+def set_config(base_url: str, model: str, temperature: float = 0.7):
+    """设置 Agent 配置。"""
+    global _config, _agent
+    _config = {
+        "base_url": base_url,
+        "model": model,
+        "temperature": temperature
+    }
+    # 重置 agent 以使用新配置
+    _agent = None
 
 
 def get_agent():
     """获取或创建 agent 实例。"""
     global _agent
     if _agent is None:
-        _agent = create_todo_agent()
+        _agent = create_todo_agent(
+            base_url=_config["base_url"],
+            model=_config["model"],
+            temperature=_config["temperature"]
+        )
     return _agent
 
 

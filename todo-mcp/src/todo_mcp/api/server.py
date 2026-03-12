@@ -13,7 +13,7 @@ from todo_mcp.reminder.rules import RuleManager
 from todo_mcp.reminder.scheduler import ReminderScheduler
 from todo_mcp.reminder.config import load_reminder_config
 from todo_mcp.reminder.notifiers.cli import CliNotifier
-from todo_mcp.api.openai_compat import router as openai_router
+from todo_mcp.api.openai_compat import router as openai_router, set_config as set_openai_config
 
 
 class ChatRequest(BaseModel):
@@ -53,6 +53,9 @@ def create_app(model: str = "qwen2.5", base_url: str = "http://localhost:11434/v
         "base_url": base_url,
         "temperature": temperature
     }
+
+    # 同步配置到 OpenAI 兼容层
+    set_openai_config(base_url, model, temperature)
 
     app = FastAPI(
         title="Todo Agent API",
