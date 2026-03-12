@@ -190,7 +190,23 @@ async def list_models() -> dict:
                 "id": "todo-agent",
                 "object": "model",
                 "created": 1700000000,
-                "owned_by": "local"
+                "owned_by": "local",
+                "permission": [
+                    {
+                        "id": "modelperm-todo-agent",
+                        "object": "model_permission",
+                        "created": 1700000000,
+                        "allow_create_engine": False,
+                        "allow_sampling": True,
+                        "allow_logprobs": True,
+                        "allow_search_indices": False,
+                        "allow_view": True,
+                        "allow_fine_tuning": False,
+                        "organization": "*",
+                        "group": None,
+                        "is_blocking": False
+                    }
+                ]
             }
         ]
     }
@@ -206,7 +222,23 @@ async def get_model(model_id: str) -> dict:
         "id": "todo-agent",
         "object": "model",
         "created": 1700000000,
-        "owned_by": "local"
+        "owned_by": "local",
+        "permission": [
+            {
+                "id": "modelperm-todo-agent",
+                "object": "model_permission",
+                "created": 1700000000,
+                "allow_create_engine": False,
+                "allow_sampling": True,
+                "allow_logprobs": True,
+                "allow_search_indices": False,
+                "allow_view": True,
+                "allow_fine_tuning": False,
+                "organization": "*",
+                "group": None,
+                "is_blocking": False
+            }
+        ]
     }
 
 
