@@ -72,6 +72,8 @@ class ReminderEngine:
                 return [t for t in tasks if not t.get("completed")]
         elif rule.type == "daily_brief":
             return tasks
+        elif rule.type == "weekly_review":
+            return tasks
         return []
 
     async def _dispatch(

@@ -1,6 +1,6 @@
 """Reminder condition checking logic."""
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from .models import Notification, NotificationLevel, ReminderRule
@@ -89,6 +89,8 @@ class ReminderChecker:
             return self._build_overload_notification(matches, kwargs)
         elif rule_type == "daily_brief":
             return self._build_daily_brief_notification(matches, kwargs)
+        elif rule_type == "weekly_review":
+            return self._build_weekly_review_notification(matches, kwargs)
 
         return None
 
@@ -151,4 +153,42 @@ class ReminderChecker:
             content="\n".join(lines),
             actions=["查看全部", "开始处理"],
             metadata={"count": len(incomplete), "type": "daily_brief"}
+        )
+
+    def _build_weekly_review_notification(self, matches: list, kwargs: dict) -> Notification:
+        """Build notification for weekly review."""
+        from datetime import datetime
+
+        incomplete = [t for t in matches if not t.get("completed")]
+        completed = [t for t in matches if t.get("completed")]
+
+        today = date.today()
+        week_start = today - timedelta(days=today.weekday())
+        week_end = week_start + timedelta(days=6)
+
+        lines = [
+            f"本周任务总结 ({week_start} ~ {week_end})",
+            "",
+            f"待完成: {len(incomplete)} 个",
+            f"已完成: {len(completed)} 个",
+            "",
+        ]
+
+        if incomplete:
+            lines.append("待完成任务：")
+            for task in incomplete[:5]:
+                lines.append(f"• {task['content']}")
+            if len(incomplete) > 5:
+                lines.append(f"\n... 还有 {len(incomplete) - 5} 个任务")
+
+        return Notification(
+            title="📅 周度回顾",
+            level=NotificationLevel.INFO,
+            content="\n".join(lines),
+            actions=["查看全部", "计划下周"],
+            metadata={
+                "incomplete_count": len(incomplete),
+                "completed_count": len(completed),
+                "type": "weekly_review"
+            }
         )
