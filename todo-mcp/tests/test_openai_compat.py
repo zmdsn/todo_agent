@@ -376,3 +376,35 @@ class TestApiKeyAuthentication:
             headers={"Authorization": "Bearer test-secret-key"}
         )
         assert response.status_code == 200
+
+
+class TestServerApiKeyConfiguration:
+    """Test server API key configuration from CLI and env."""
+
+    def test_create_app_with_server_api_key(self):
+        """Test create_app accepts server_api_key parameter."""
+        from todo_mcp.api.server import create_app
+        from todo_mcp.api import openai_compat
+
+        app = create_app(server_api_key="cli-secret-key")
+
+        # The key should be set in openai_compat module
+        assert openai_compat._server_api_key == "cli-secret-key"
+
+        # Cleanup
+        openai_compat.set_server_api_key(None)
+
+    def test_env_var_api_key(self, monkeypatch):
+        """Test TODO_API_KEY environment variable is read."""
+        monkeypatch.setenv("TODO_API_KEY", "env-secret-key")
+
+        from todo_mcp.api.server import create_app
+        from todo_mcp.api import openai_compat
+
+        app = create_app()
+
+        assert openai_compat._server_api_key == "env-secret-key"
+
+        # Cleanup
+        openai_compat.set_server_api_key(None)
+        monkeypatch.delenv("TODO_API_KEY")

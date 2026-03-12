@@ -13,7 +13,8 @@ from todo_mcp.reminder.rules import RuleManager
 from todo_mcp.reminder.scheduler import ReminderScheduler
 from todo_mcp.reminder.config import load_reminder_config
 from todo_mcp.reminder.notifiers.cli import CliNotifier
-from todo_mcp.api.openai_compat import router as openai_router, set_config as set_openai_config
+from todo_mcp.api.openai_compat import router as openai_router, set_config as set_openai_config, set_server_api_key
+import os
 
 
 class ChatRequest(BaseModel):
@@ -45,7 +46,7 @@ def get_agent():
     return _agent
 
 
-def create_app(model: str = "qwen2.5", base_url: str = "http://localhost:11434/v1", temperature: float = 0.7, api_key: str = "dummy"):
+def create_app(model: str = "qwen2.5", base_url: str = "http://localhost:11434/v1", temperature: float = 0.7, api_key: str = "dummy", server_api_key: Optional[str] = None):
     """创建 FastAPI 应用。"""
     global _config
     _config = {
@@ -54,6 +55,11 @@ def create_app(model: str = "qwen2.5", base_url: str = "http://localhost:11434/v
         "temperature": temperature,
         "api_key": api_key
     }
+
+    # Set server API key (from param or env var)
+    effective_key = server_api_key or os.environ.get("TODO_API_KEY")
+    if effective_key:
+        set_server_api_key(effective_key)
 
     # 同步配置到 OpenAI 兼容层
     set_openai_config(base_url, model, temperature, api_key)
