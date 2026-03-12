@@ -7,6 +7,12 @@ from typing import Optional
 import uuid
 
 from todo_mcp.agent import create_todo_agent, run_agent, session_manager
+from todo_mcp.reminder import ReminderChecker
+from todo_mcp.reminder.engine import ReminderEngine
+from todo_mcp.reminder.rules import RuleManager
+from todo_mcp.reminder.scheduler import ReminderScheduler
+from todo_mcp.reminder.config import load_reminder_config
+from todo_mcp.reminder.notifiers.cli import CliNotifier
 
 
 class ChatRequest(BaseModel):
@@ -95,6 +101,48 @@ def create_app(model: str = "qwen2.5", base_url: str = "http://localhost:11434/v
                 for t in tools
             ]
         }
+
+    @app.on_event("startup")
+    async def startup_reminder():
+        """Initialize reminder system on startup."""
+        config = load_reminder_config("config.yaml")
+
+        if not config.enabled:
+            return
+
+        rule_manager = RuleManager(rules=config.rules)
+        checker = ReminderChecker()
+        notifiers = {}
+
+        # Setup CLI notifier
+        cli_config = config.channels.get("cli", {})
+        if cli_config.get("enabled", False):
+            notifiers["cli"] = CliNotifier(
+                enabled=True,
+                sound=cli_config.get("sound", False),
+            )
+
+        engine = ReminderEngine(
+            rule_manager=rule_manager,
+            checker=checker,
+            notifiers=notifiers,
+        )
+
+        scheduler = ReminderScheduler(engine=engine)
+        # Start scheduler as background task (don't await)
+        import asyncio
+        asyncio.create_task(scheduler._run_monitor())
+        asyncio.create_task(scheduler._run_scheduled())
+
+        app.state.reminder_engine = engine
+        app.state.reminder_scheduler = scheduler
+
+    @app.on_event("shutdown")
+    async def shutdown_reminder():
+        """Cleanup reminder system on shutdown."""
+        scheduler = getattr(app.state, "reminder_scheduler", None)
+        if scheduler:
+            await scheduler.stop()
 
     return app
 
