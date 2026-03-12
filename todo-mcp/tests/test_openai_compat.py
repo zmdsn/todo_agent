@@ -1,6 +1,8 @@
 """Tests for OpenAI compatible data models."""
 
 import time
+import pytest
+from fastapi.testclient import TestClient
 from todo_mcp.api.openai_compat import (
     ChatMessage,
     OpenAIChatRequest,
@@ -151,3 +153,37 @@ def test_convert_openai_messages_empty():
     session_id, user_message = convert_openai_messages(messages)
     assert session_id == "default"
     assert user_message == ""
+
+
+@pytest.fixture
+def client():
+    """Create test client with OpenAI compat router."""
+    from fastapi import FastAPI
+    from todo_mcp.api.openai_compat import router
+
+    app = FastAPI()
+    app.include_router(router)
+    return TestClient(app)
+
+
+class TestModelsEndpoint:
+    """Tests for /v1/models endpoints."""
+
+    def test_list_models(self, client):
+        """Test listing available models."""
+        response = client.get("/v1/models")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["object"] == "list"
+        assert any(m["id"] == "todo-agent" for m in data["data"])
+
+    def test_get_model(self, client):
+        """Test getting a specific model."""
+        response = client.get("/v1/models/todo-agent")
+        assert response.status_code == 200
+        assert response.json()["id"] == "todo-agent"
+
+    def test_get_model_not_found(self, client):
+        """Test getting a non-existent model."""
+        response = client.get("/v1/models/nonexistent")
+        assert response.status_code == 404

@@ -2,6 +2,10 @@
 
 from typing import Literal, Optional
 from pydantic import BaseModel, Field
+from fastapi import APIRouter, HTTPException
+
+
+router = APIRouter(prefix="/v1", tags=["OpenAI Compatible"])
 
 
 class ChatMessage(BaseModel):
@@ -84,3 +88,33 @@ def convert_openai_messages(messages: list[ChatMessage]) -> tuple[str, str]:
             break
 
     return session_id, user_message
+
+
+@router.get("/models")
+async def list_models() -> dict:
+    """列出可用模型。"""
+    return {
+        "object": "list",
+        "data": [
+            {
+                "id": "todo-agent",
+                "object": "model",
+                "created": 1700000000,
+                "owned_by": "local"
+            }
+        ]
+    }
+
+
+@router.get("/models/{model_id}")
+async def get_model(model_id: str) -> dict:
+    """获取模型信息。"""
+    if model_id != "todo-agent":
+        raise HTTPException(status_code=404, detail="Model not found")
+
+    return {
+        "id": "todo-agent",
+        "object": "model",
+        "created": 1700000000,
+        "owned_by": "local"
+    }
