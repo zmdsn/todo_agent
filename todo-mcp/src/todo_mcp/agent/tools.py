@@ -6,6 +6,7 @@ from pathlib import Path
 
 from todo_mcp.models import Task, TaskStatus, Config
 from todo_mcp.utils.time import TimeParser
+from todo_mcp.utils.estimator import TaskEstimator
 from todo_mcp.parser.writer import MarkdownWriter
 from todo_mcp.parser.reader import MarkdownReader
 from datetime import date
@@ -390,4 +391,103 @@ def get_all_tools():
         get_progress,
         analyze_status,
         suggest_schedule,
+        # 新增工具
+        estimate_task,
+        split_task,
+        add_task_with_split,
     ]
+
+
+@tool
+def estimate_task(content: str, priority: Optional[str] = None) -> dict:
+    """预估任务完成时间。
+
+    Args:
+        content: 任务内容
+        priority: 优先级 (high/medium/low)
+
+    Returns:
+        预估结果，包含 estimated_minutes, should_split, reason
+    """
+    config = _get_config()
+    estimator = TaskEstimator(
+        threshold_minutes=config.task_split_threshold_minutes,
+        target_minutes=config.task_split_target_minutes
+    )
+    return estimator.estimate(content, priority)
+
+
+@tool
+def split_task(
+    content: str,
+    priority: Optional[str] = None,
+    target_minutes: int = 60
+) -> dict:
+    """拆分任务为子任务。
+
+    Args:
+        content: 任务内容
+        priority: 优先级 (high/medium/low)
+        target_minutes: 每个子任务的目标时长（分钟）
+
+    Returns:
+        拆分结果，包含 subtasks 列表和 total_minutes
+    """
+    config = _get_config()
+    estimator = TaskEstimator(
+        threshold_minutes=config.task_split_threshold_minutes,
+        target_minutes=config.task_split_target_minutes
+    )
+    return estimator.split(content, priority, target_minutes)
+
+
+@tool
+def add_task_with_split(
+    content: str,
+    time_expr: str,
+    priority: Optional[str] = None,
+    confirm_split: bool = True
+) -> str:
+    """添加任务，自动检测是否需要拆分。
+
+    如果预估时间超过阈值，会返回拆分建议供用户确认。
+
+    Args:
+        content: 任务内容
+        time_expr: 时间表达式，如"今天"、"明天"
+        priority: 优先级 (high/medium/low)
+        confirm_split: 是否需要用户确认拆分
+
+    Returns:
+        操作结果或拆分建议
+    """
+    config = _get_config()
+    estimator = TaskEstimator(
+        threshold_minutes=config.task_split_threshold_minutes,
+        target_minutes=config.task_split_target_minutes
+    )
+
+    # 预估时间
+    estimate = estimator.estimate(content, priority)
+
+    if estimate["should_split"] and confirm_split:
+        # 返回拆分建议
+        split_result = estimator.split(content, priority)
+        subtask_list = "\n".join([
+            f"  - {s['content']} (预估: {s['estimated_minutes']}m)"
+            for s in split_result["subtasks"]
+        ])
+        return (
+            f"⏱️ 预估此任务需要 {estimate['estimated_minutes']} 分钟，建议拆分：\n"
+            f"{subtask_list}\n\n"
+            f"请确认：\n"
+            f"[1] 按建议拆分\n"
+            f"[2] 直接添加（不拆分）"
+        )
+
+    # 直接添加任务
+    return add_task.invoke({
+        "content": content,
+        "time_expr": time_expr,
+        "priority": priority
+    })

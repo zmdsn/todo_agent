@@ -9,12 +9,14 @@ def test_get_all_tools():
     from todo_mcp.agent import get_all_tools
 
     tools = get_all_tools()
-    assert len(tools) == 7
+    assert len(tools) == 10
 
     tool_names = [t.name for t in tools]
     assert "add_task" in tool_names
     assert "get_today" in tool_names
     assert "suggest_schedule" in tool_names
+    assert "estimate_task" in tool_names
+    assert "split_task" in tool_names
 
 
 def test_system_prompt():
@@ -65,3 +67,23 @@ def test_suggest_schedule_tool():
 
     result = suggest_schedule.invoke({})
     assert "建议" in result or "暂无" in result
+
+
+def test_estimate_task_tool():
+    """测试预估任务工具"""
+    from todo_mcp.agent.tools import estimate_task
+    result = estimate_task.invoke({"content": "完成季度报告，包括数据收集、分析和撰写", "priority": "high"})
+    assert "estimated_minutes" in result
+    assert result["should_split"] == True
+
+
+def test_split_task_tool():
+    """测试拆分任务工具"""
+    from todo_mcp.agent.tools import split_task
+    result = split_task.invoke({
+        "content": "完成季度报告，包括数据收集、分析和撰写",
+        "priority": "high",
+        "target_minutes": 60
+    })
+    assert len(result["subtasks"]) >= 2
+    assert result["needs_split"] == True
