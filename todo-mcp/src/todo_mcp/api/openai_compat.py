@@ -4,12 +4,61 @@ import time
 import uuid
 from typing import Literal, Optional
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from todo_mcp.agent import create_todo_agent, run_agent, session_manager
 
 
 router = APIRouter(prefix="/v1", tags=["OpenAI Compatible"])
+
+# Server API key for authentication
+_server_api_key: Optional[str] = None
+
+security = HTTPBearer(auto_error=False)
+
+
+def set_server_api_key(key: Optional[str]) -> None:
+    """Set the server API key for authentication."""
+    global _server_api_key
+    _server_api_key = key
+
+
+async def verify_api_key(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+) -> str:
+    """Verify API key from Authorization header."""
+    # No key configured = no authentication required
+    if _server_api_key is None:
+        return "anonymous"
+
+    # Key configured but no credentials provided
+    if credentials is None:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": {
+                    "message": "Invalid API key",
+                    "type": "invalid_request_error",
+                    "code": "invalid_api_key"
+                }
+            }
+        )
+
+    # Verify the key matches
+    if credentials.credentials != _server_api_key:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": {
+                    "message": "Invalid API key",
+                    "type": "invalid_request_error",
+                    "code": "invalid_api_key"
+                }
+            }
+        )
+
+    return credentials.credentials
 
 
 # Global agent instance and config
@@ -130,7 +179,7 @@ def convert_openai_messages(messages: list[ChatMessage]) -> tuple[str, str]:
     return session_id, user_message
 
 
-@router.get("/models")
+@router.get("/models", dependencies=[Depends(verify_api_key)])
 async def list_models() -> dict:
     """列出可用模型。"""
     return {
@@ -146,7 +195,7 @@ async def list_models() -> dict:
     }
 
 
-@router.get("/models/{model_id}")
+@router.get("/models/{model_id}", dependencies=[Depends(verify_api_key)])
 async def get_model(model_id: str) -> dict:
     """获取模型信息。"""
     if model_id != "todo-agent":
@@ -160,7 +209,7 @@ async def get_model(model_id: str) -> dict:
     }
 
 
-@router.post("/chat/completions", response_model=OpenAIChatResponse)
+@router.post("/chat/completions", response_model=OpenAIChatResponse, dependencies=[Depends(verify_api_key)])
 async def chat_completions(request: OpenAIChatRequest) -> OpenAIChatResponse:
     """OpenAI 兼容的聊天补全端点。"""
     # 转换消息

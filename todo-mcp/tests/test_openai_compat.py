@@ -301,3 +301,78 @@ class TestServerIntegration:
 
         assert response.status_code == 200
         assert "集成测试响应" in response.json()["choices"][0]["message"]["content"]
+
+
+class TestApiKeyAuthentication:
+    """Test API key authentication for /v1/* endpoints."""
+
+    @pytest.fixture
+    def protected_client(self):
+        """Create test client with API key configured."""
+        from fastapi import FastAPI
+        from todo_mcp.api.openai_compat import router, set_server_api_key
+
+        set_server_api_key("test-secret-key")
+        app = FastAPI()
+        app.include_router(router)
+
+        from fastapi.testclient import TestClient
+        client = TestClient(app)
+        yield client
+
+        # Cleanup
+        set_server_api_key(None)
+
+    def test_no_auth_when_no_key_configured(self, client):
+        """Test that requests work when no API key is configured."""
+        response = client.get("/v1/models")
+        assert response.status_code == 200
+
+    def test_reject_request_without_auth_header(self, protected_client):
+        """Test 401 when API key is required but not provided."""
+        response = protected_client.get("/v1/models")
+        assert response.status_code == 401
+        data = response.json()
+        assert "error" in data["detail"]
+        assert data["detail"]["error"]["code"] == "invalid_api_key"
+
+    def test_reject_request_with_wrong_key(self, protected_client):
+        """Test 401 when wrong API key is provided."""
+        response = protected_client.get(
+            "/v1/models",
+            headers={"Authorization": "Bearer wrong-key"}
+        )
+        assert response.status_code == 401
+
+    def test_accept_request_with_correct_key(self, protected_client):
+        """Test 200 when correct API key is provided."""
+        response = protected_client.get(
+            "/v1/models",
+            headers={"Authorization": "Bearer test-secret-key"}
+        )
+        assert response.status_code == 200
+
+    def test_protect_chat_completions(self, protected_client):
+        """Test chat completions endpoint requires API key."""
+        from unittest.mock import patch, MagicMock
+        with patch("todo_mcp.api.openai_compat.get_agent") as mock_get:
+            mock_get.return_value = MagicMock()
+
+            with patch("todo_mcp.api.openai_compat.run_agent") as mock_run:
+                mock_run.return_value = "响应"
+
+                response = protected_client.post(
+                    "/v1/chat/completions",
+                    json={"model": "todo-agent", "messages": [{"role": "user", "content": "测试"}]},
+                    headers={"Authorization": "Bearer test-secret-key"}
+                )
+
+        assert response.status_code == 200
+
+    def test_protect_get_model(self, protected_client):
+        """Test get model endpoint requires API key."""
+        response = protected_client.get(
+            "/v1/models/todo-agent",
+            headers={"Authorization": "Bearer test-secret-key"}
+        )
+        assert response.status_code == 200
