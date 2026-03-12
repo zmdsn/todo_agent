@@ -1,5 +1,6 @@
 """OpenAI-compatible data models for chat completions API."""
 
+import secrets
 import time
 import uuid
 from typing import Literal, Optional
@@ -46,7 +47,7 @@ async def verify_api_key(
         )
 
     # Verify the key matches
-    if credentials.credentials != _server_api_key:
+    if not secrets.compare_digest(credentials.credentials, _server_api_key):
         raise HTTPException(
             status_code=401,
             detail={
