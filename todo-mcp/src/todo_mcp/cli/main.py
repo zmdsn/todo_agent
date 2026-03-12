@@ -101,5 +101,147 @@ def serve(port: int, host: str, model: str, base_url: str):
     uvicorn.run(app, host=host, port=port)
 
 
+@main.command("check-reminders")
+@click.option("--config", "-c", "config_path", default="config.yaml", help="配置文件路径")
+@click.option("--todo-root", "-t", default=None, help="Todo 根目录")
+def check_reminders(config_path: str, todo_root: str | None):
+    """检查并发送提醒通知。"""
+    import asyncio
+    from pathlib import Path
+    from todo_mcp.reminder.engine import ReminderEngine
+    from todo_mcp.reminder.checker import ReminderChecker
+    from todo_mcp.reminder.rules import RuleManager
+    from todo_mcp.reminder.config import load_reminder_config
+    from todo_mcp.reminder.notifiers.cli import CliNotifier
+    from todo_mcp.parser.reader import MarkdownReader
+
+    config = load_reminder_config(config_path)
+
+    if not config.enabled:
+        click.echo("提醒功能未启用，请在 config.yaml 中设置 reminders.enabled: true")
+        return
+
+    rule_manager = RuleManager(rules=config.rules)
+    checker = ReminderChecker()
+    notifier = CliNotifier(enabled=True)
+
+    engine = ReminderEngine(
+        rule_manager=rule_manager,
+        checker=checker,
+        notifiers={"cli": notifier},
+    )
+
+    # Get tasks from todo directory
+    root = Path(todo_root) if todo_root else Path.home() / "todo"
+    tasks = _collect_tasks(root)
+
+    if not tasks:
+        click.echo("未找到任何任务")
+        return
+
+    click.echo(f"检查 {len(tasks)} 个任务...")
+
+    async def run_check():
+        notifications = await engine.check_and_notify(tasks)
+        return notifications
+
+    notifications = asyncio.run(run_check())
+
+    if notifications:
+        click.echo(f"已发送 {len(notifications)} 个提醒通知")
+    else:
+        click.echo("没有需要提醒的任务")
+
+
+@main.command("reminder-daemon")
+@click.option("--config", "-c", "config_path", default="config.yaml", help="配置文件路径")
+@click.option("--todo-root", "-t", default=None, help="Todo 根目录")
+@click.option("--interval", "-i", default=300, help="检查间隔（秒）")
+def reminder_daemon(config_path: str, todo_root: str | None, interval: int):
+    """启动提醒守护进程。"""
+    import asyncio
+    from pathlib import Path
+    from todo_mcp.reminder.engine import ReminderEngine
+    from todo_mcp.reminder.checker import ReminderChecker
+    from todo_mcp.reminder.rules import RuleManager
+    from todo_mcp.reminder.scheduler import ReminderScheduler
+    from todo_mcp.reminder.config import load_reminder_config
+    from todo_mcp.reminder.notifiers.cli import CliNotifier
+
+    config = load_reminder_config(config_path)
+
+    if not config.enabled:
+        click.echo("提醒功能未启用")
+        return
+
+    rule_manager = RuleManager(rules=config.rules)
+    checker = ReminderChecker()
+    notifier = CliNotifier(enabled=True, sound=True)
+
+    engine = ReminderEngine(
+        rule_manager=rule_manager,
+        checker=checker,
+        notifiers={"cli": notifier},
+    )
+
+    root = Path(todo_root) if todo_root else Path.home() / "todo"
+
+    def get_tasks():
+        return _collect_tasks(root)
+
+    scheduler = ReminderScheduler(
+        engine=engine,
+        monitor_interval=interval,
+        get_tasks_callback=get_tasks
+    )
+
+    click.echo(f"启动提醒守护进程...")
+    click.echo(f"   配置: {config_path}")
+    click.echo(f"   Todo 目录: {root}")
+    click.echo(f"   检查间隔: {interval} 秒")
+    click.echo("   按 Ctrl+C 停止\n")
+
+    async def run():
+        try:
+            # Start scheduler in background
+            await scheduler.start()
+        except asyncio.CancelledError:
+            await scheduler.stop()
+
+    try:
+        asyncio.run(run())
+    except KeyboardInterrupt:
+        click.echo("\n提醒守护进程已停止")
+
+
+def _collect_tasks(root: Path) -> list[dict]:
+    """Collect all tasks from markdown files in todo directory."""
+    from todo_mcp.parser.reader import MarkdownReader
+    from todo_mcp.models import TaskStatus
+
+    tasks = []
+
+    if not root.exists():
+        return tasks
+
+    # Find all markdown files
+    for md_file in root.rglob("*.md"):
+        reader = MarkdownReader(md_file)
+        file_tasks = reader.read_tasks()
+
+        for task in file_tasks:
+            task_dict = {
+                "id": task.id,
+                "content": task.content,
+                "completed": task.status == TaskStatus.COMPLETED,
+                "location": task.location,
+                "due_date": task.due_date,
+                "priority": task.priority,
+            }
+            tasks.append(task_dict)
+
+    return tasks
+
+
 if __name__ == "__main__":
     main()
