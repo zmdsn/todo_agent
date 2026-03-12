@@ -13,6 +13,7 @@ from todo_mcp.reminder.rules import RuleManager
 from todo_mcp.reminder.scheduler import ReminderScheduler
 from todo_mcp.reminder.config import load_reminder_config
 from todo_mcp.reminder.notifiers.cli import CliNotifier
+from todo_mcp.api.openai_compat import router as openai_router
 
 
 class ChatRequest(BaseModel):
@@ -66,6 +67,8 @@ def create_app(model: str = "qwen2.5", base_url: str = "http://localhost:11434/v
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    app.include_router(openai_router)
 
     @app.get("/")
     async def root():

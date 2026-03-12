@@ -265,3 +265,39 @@ class TestChatCompletions:
         # The third argument (session_manager) has the session
         call_args = mock_run.call_args
         assert "custom-session" in str(call_args)
+
+
+class TestServerIntegration:
+    """Test OpenAI endpoints integrated with main server."""
+
+    @pytest.fixture
+    def server_client(self):
+        from todo_mcp.api.server import create_app
+        from fastapi.testclient import TestClient
+        app = create_app()
+        return TestClient(app)
+
+    def test_openai_routes_included(self, server_client):
+        """Test OpenAI routes are included in main server."""
+        response = server_client.get("/v1/models")
+        assert response.status_code == 200
+
+    def test_openai_chat_on_main_server(self, server_client):
+        """Test chat completions on main server."""
+        with patch("todo_mcp.api.openai_compat.get_agent") as mock_get:
+            mock_agent = MagicMock()
+            mock_get.return_value = mock_agent
+
+            with patch("todo_mcp.api.openai_compat.run_agent") as mock_run:
+                mock_run.return_value = "集成测试响应"
+
+                response = server_client.post(
+                    "/v1/chat/completions",
+                    json={
+                        "model": "todo-agent",
+                        "messages": [{"role": "user", "content": "测试"}]
+                    }
+                )
+
+        assert response.status_code == 200
+        assert "集成测试响应" in response.json()["choices"][0]["message"]["content"]
