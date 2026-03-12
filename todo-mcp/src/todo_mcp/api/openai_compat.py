@@ -63,3 +63,24 @@ class ModelList(BaseModel):
 
     object: str = "list"
     data: list[ModelInfo]
+
+
+def convert_openai_messages(messages: list[ChatMessage]) -> tuple[str, str]:
+    """将 OpenAI 消息格式转换为 Agent 输入。
+
+    Args:
+        messages: OpenAI 格式的消息列表
+
+    Returns:
+        (session_id, user_message)
+    """
+    session_id = "default"
+    user_message = ""
+
+    # 最后一条 user 消息作为输入
+    for msg in reversed(messages):
+        if msg.role == "user":
+            user_message = msg.content
+            break
+
+    return session_id, user_message

@@ -9,6 +9,7 @@ from todo_mcp.api.openai_compat import (
     Choice,
     ModelInfo,
     ModelList,
+    convert_openai_messages,
 )
 
 
@@ -109,3 +110,44 @@ def test_model_list():
     assert models.object == "list"
     assert len(models.data) == 2
     assert models.data[0].id == "todo-agent"
+
+
+def test_convert_openai_messages_single():
+    """Test conversion with a single user message."""
+    messages = [ChatMessage(role="user", content="Hello")]
+    session_id, user_message = convert_openai_messages(messages)
+    assert session_id == "default"
+    assert user_message == "Hello"
+
+
+def test_convert_openai_messages_with_system():
+    """Test that system messages are ignored."""
+    messages = [
+        ChatMessage(role="system", content="You are a helpful assistant."),
+        ChatMessage(role="user", content="What can you do?"),
+    ]
+    session_id, user_message = convert_openai_messages(messages)
+    assert session_id == "default"
+    assert user_message == "What can you do?"
+
+
+def test_convert_openai_messages_conversation():
+    """Test multi-turn conversation extracts last user message."""
+    messages = [
+        ChatMessage(role="user", content="First message"),
+        ChatMessage(role="assistant", content="Response 1"),
+        ChatMessage(role="user", content="Second message"),
+        ChatMessage(role="assistant", content="Response 2"),
+        ChatMessage(role="user", content="Latest question"),
+    ]
+    session_id, user_message = convert_openai_messages(messages)
+    assert session_id == "default"
+    assert user_message == "Latest question"
+
+
+def test_convert_openai_messages_empty():
+    """Test empty list returns default values."""
+    messages = []
+    session_id, user_message = convert_openai_messages(messages)
+    assert session_id == "default"
+    assert user_message == ""
