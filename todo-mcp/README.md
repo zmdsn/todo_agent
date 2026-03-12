@@ -108,6 +108,56 @@ uv run todo-mcp --http --port 33333 --host 127.0.0.1
 - `--port <端口>` - 指定端口 (默认 8000)
 - `--host <地址>` - 指定绑定地址 (默认 127.0.0.1)
 
+### 智能提醒
+
+todo-mcp 支持智能提醒功能，可以在任务即将到期、任务过多时主动提醒。
+
+#### 配置
+
+在 `config.yaml` 中启用提醒：
+
+```yaml
+reminders:
+  enabled: true
+  rules:
+    - type: due_soon
+      days_before: [3, 1]
+      channels: [cli]
+    - type: daily_brief
+      time: "08:00"
+      channels: [cli]
+  channels:
+    cli:
+      enabled: true
+      sound: false
+    webhook:
+      enabled: true
+      endpoints:
+        - name: "企业微信"
+          url: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx"
+          template: "markdown"
+```
+
+#### CLI 命令
+
+```bash
+# 检查提醒
+uv run todo-mcp check-reminders
+
+# 启动守护进程
+uv run todo-mcp reminder-daemon
+```
+
+#### 在对话中管理提醒
+
+```
+用户: 把到期提醒改成提前 5 天
+Agent: 已将到期提醒调整为提前 5 天提醒
+
+用户: 每周回顾推送到钉钉
+Agent: 已为每周回顾添加钉钉推送渠道
+```
+
 ## 许可证
 
 MIT
