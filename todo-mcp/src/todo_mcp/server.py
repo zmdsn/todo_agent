@@ -120,9 +120,10 @@ class TodoMCPServer:
 
         if today_tasks:
             result += "📋 任务列表:\n"
-            for task in today_tasks:
+            for i, task in enumerate(today_tasks, 1):
                 status_icon = "✅" if task.status == TaskStatus.COMPLETED else "⬜"
-                result += f"  {status_icon} {task.content}\n"
+                result += f"  #{i} {status_icon} {task.content}\n"
+            result += f"\n💡 提示: 使用编号操作任务，如「完成 #1」「删除 #2」"
         else:
             result += "今日暂无任务安排 🎉"
 

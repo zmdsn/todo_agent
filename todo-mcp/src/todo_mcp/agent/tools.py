@@ -513,11 +513,13 @@ def add_task_with_split(
 
 
 @tool
-def delete_task(task_id: str) -> str:
+def delete_task(task_ref: str) -> str:
     """删除指定任务。
 
     Args:
-        task_id: 要删除的任务ID
+        task_ref: 任务引用，可以是:
+            - 任务编号（如 #1, #2 或 1, 2）- 删除今日任务
+            - 完整任务ID（如 2026-Q1-03-13-1）
 
     Returns:
         操作结果消息
@@ -525,6 +527,53 @@ def delete_task(task_id: str) -> str:
     config = _get_config()
 
     try:
+        # 支持简短编号（#1, #2 或 1, 2）
+        if task_ref.startswith("#") or task_ref.isdigit():
+            # 获取今日任务
+            number = int(task_ref.lstrip("#"))
+            today = date.today()
+            parser = TimeParser()
+            parsed = parser.parse("今天")
+
+            file_path_str = parsed.to_file_path()
+            if "#" in file_path_str:
+                file_path_str = file_path_str.split("#")[0]
+            file_path = config.todo_root / file_path_str
+
+            if not file_path.exists():
+                return f"错误: 找不到今日任务文件"
+
+            reader = MarkdownReader(file_path)
+            content = file_path.read_text(encoding='utf-8')
+            lines = content.split('\n')
+            current_day = None
+            task_counter = 0
+            target_task_id = None
+
+            for line in lines:
+                day = reader._parse_day_header(line.strip())
+                if day is not None:
+                    current_day = day
+                    task_counter = 0
+                    continue
+
+                task_match = MarkdownReader.TASK_PATTERN.match(line)
+                if task_match and current_day == today.day:
+                    task_counter += 1
+                    if task_counter == number:
+                        target_task_id = f"{today.year}-{parsed.quarter}-{today.month:02d}-{today.day:02d}-{task_counter}"
+                        break
+
+            if not target_task_id:
+                return f"错误: 找不到今日第 {number} 项任务"
+
+            task_id = target_task_id
+            task_ref_display = f"#{number}"
+        else:
+            task_id = task_ref
+            task_ref_display = task_ref
+
+        # 解析 task_id 获取文件路径
         parts = task_id.split("-")
         if len(parts) >= 4:
             year = parts[0]
@@ -547,10 +596,10 @@ def delete_task(task_id: str) -> str:
             success = writer.delete_task(task_id)
 
             if success:
-                return f"✅ 已删除任务: {task_id}"
+                return f"✅ 已删除任务: {task_ref_display}"
             else:
                 return f"错误: 删除任务失败，可能找不到该任务"
         else:
-            return f"错误: 无效的 task_id 格式: {task_id}"
+            return f"错误: 无效的任务引用格式: {task_ref}"
     except Exception as e:
         return f"错误: {str(e)}"
