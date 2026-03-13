@@ -63,11 +63,17 @@ def run_agent(
     Returns:
         Agent 响应
     """
+    from datetime import date
+
     memory = session_manager.get_memory(session_id)
     chat_history = memory.messages
 
-    # 构建消息列表
-    messages = list(chat_history) + [HumanMessage(content=message)]
+    # 动态注入当前日期（因为 agent 创建时日期被缓存了）
+    today = date.today()
+    date_context = f"[系统提示: 当前日期是 {today.year}年{today.month}月{today.day}日，请以此为准。]\n\n"
+
+    # 构建消息列表，在用户消息前添加日期上下文
+    messages = list(chat_history) + [HumanMessage(content=date_context + message)]
 
     # 调用 agent
     result = agent.invoke({"messages": messages})
@@ -80,7 +86,7 @@ def run_agent(
                 output = msg.content
                 break
 
-    # 保存到记忆
+    # 保存到记忆（保存原始用户消息，不包含日期上下文）
     memory.add_user_message(message)
     memory.add_ai_message(output)
 
