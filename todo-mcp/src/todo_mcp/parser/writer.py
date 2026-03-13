@@ -194,3 +194,77 @@ class MarkdownWriter:
 
         self.file_path.write_text('\n'.join(new_lines), encoding='utf-8')
         return True
+
+    def update_task_estimate(self, task_id: str, estimated_minutes: Optional[int]) -> bool:
+        """更新任务预估时间。
+
+        Args:
+            task_id: 任务ID
+            estimated_minutes: 预估分钟数，None 表示移除预估时间
+
+        Returns:
+            是否更新成功
+        """
+        if not self.file_path.exists():
+            return False
+
+        # 解析 task_id
+        parsed = self._parse_task_id(task_id)
+        if not parsed:
+            return False
+
+        target_day = parsed['day']
+        target_index = parsed['index']
+
+        content = self.file_path.read_text(encoding='utf-8')
+        lines = content.split('\n')
+
+        current_day = None
+        task_counter = 0
+        day_cn_pattern = re.compile(r'^#+\s+(\d{1,2})[日号]')
+        day_slash_pattern = re.compile(r'^#+\s+\d{1,2}/(\d{1,2})')
+        task_pattern = re.compile(r'^(\s*)(-|\*)\s+\[[ xX]\]\s+(.+)$')
+
+        for i, line in enumerate(lines):
+            # 检查日期标题
+            stripped = line.strip()
+            cn_match = day_cn_pattern.match(stripped)
+            slash_match = day_slash_pattern.match(stripped)
+            if cn_match:
+                current_day = int(cn_match.group(1))
+                continue
+            elif slash_match:
+                current_day = int(slash_match.group(1))
+                continue
+
+            # 检查任务
+            task_match = task_pattern.match(line)
+            if task_match:
+                if current_day == target_day:
+                    task_counter += 1
+                    if task_counter == target_index:
+                        # 找到目标任务，更新预估时间
+                        indent = task_match.group(1)
+                        bullet = task_match.group(2)
+                        status_match = re.search(r'\[([ xX])\]', line)
+                        status_str = status_match.group(0) if status_match else '[ ]'
+
+                        # 提取原始内容，移除已有的预估时间
+                        original_content = task_match.group(3)
+                        # 移除已有的预估时间标记
+                        original_content = re.sub(r'\s*\(预估:\s*[\d.]+[hm]\)\s*$', '', original_content).strip()
+
+                        # 构建新的预估时间标记
+                        estimate_str = ""
+                        if estimated_minutes is not None:
+                            hours = estimated_minutes / 60
+                            if hours >= 1:
+                                estimate_str = f" (预估: {hours:.0f}h)" if hours == int(hours) else f" (预估: {hours:.1f}h)"
+                            else:
+                                estimate_str = f" (预估: {estimated_minutes}m)"
+
+                        lines[i] = f"{indent}{bullet} {status_str} {original_content}{estimate_str}"
+                        self.file_path.write_text('\n'.join(lines), encoding='utf-8')
+                        return True
+
+        return False

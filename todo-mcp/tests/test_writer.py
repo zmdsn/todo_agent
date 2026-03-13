@@ -76,3 +76,48 @@ def test_add_subtask():
 
         content = Path(f.name).read_text(encoding='utf-8')
         assert "  - [ ] 收集数据 (预估: 1h)" in content
+
+
+def test_update_task_estimate():
+    """测试更新任务预估时间"""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+        f.write("# March\n\n## 12日\n\n- [ ] 完成报告\n")
+        f.flush()
+
+        writer = MarkdownWriter(Path(f.name))
+        success = writer.update_task_estimate("2026-Q1-03-12-1", 120)
+        assert success
+
+        content = Path(f.name).read_text(encoding='utf-8')
+        assert "(预估: 2h)" in content
+
+
+def test_update_task_estimate_replace():
+    """测试替换已有的预估时间"""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+        f.write("# March\n\n## 12日\n\n- [ ] 完成报告 (预估: 4h)\n")
+        f.flush()
+
+        writer = MarkdownWriter(Path(f.name))
+        success = writer.update_task_estimate("2026-Q1-03-12-1", 90)
+        assert success
+
+        content = Path(f.name).read_text(encoding='utf-8')
+        # 90分钟 = 1.5小时
+        assert "(预估: 1.5h)" in content
+        assert "(预估: 4h)" not in content
+
+
+def test_update_task_estimate_remove():
+    """测试移除预估时间"""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+        f.write("# March\n\n## 12日\n\n- [ ] 完成报告 (预估: 4h)\n")
+        f.flush()
+
+        writer = MarkdownWriter(Path(f.name))
+        success = writer.update_task_estimate("2026-Q1-03-12-1", None)
+        assert success
+
+        content = Path(f.name).read_text(encoding='utf-8')
+        assert "(预估:" not in content
+        assert "- [ ] 完成报告" in content

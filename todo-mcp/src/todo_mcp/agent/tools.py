@@ -166,17 +166,64 @@ def list_plans(time_expr: str = "本月", include_completed: bool = True) -> str
 
 
 @tool
-def update_task(task_id: str, status: Optional[str] = None) -> str:
-    """更新任务状态。
+def update_task(
+    task_id: str,
+    status: Optional[str] = None,
+    estimated_minutes: Optional[int] = None
+) -> str:
+    """更新任务状态或预估时间。
 
     Args:
-        task_id: 任务ID
+        task_id: 任务ID或简短编号（如 #1, #2）
         status: 新状态，可选值: completed, pending
+        estimated_minutes: 预估完成时间（分钟），设为 0 可移除预估时间
 
     Returns:
         操作结果消息
     """
     config = _get_config()
+    parser = TimeParser()
+
+    # 支持简短编号（#1, #2 或 1, 2）- 转换为完整 task_id
+    original_task_ref = task_id
+    if task_id.startswith("#") or task_id.isdigit():
+        number = int(task_id.lstrip("#"))
+        today = date.today()
+        parsed = parser.parse("今天")
+
+        file_path_str = parsed.to_file_path()
+        if "#" in file_path_str:
+            file_path_str = file_path_str.split("#")[0]
+        file_path = config.todo_root / file_path_str
+
+        if not file_path.exists():
+            return f"错误: 找不到今日任务文件"
+
+        reader = MarkdownReader(file_path)
+        content = file_path.read_text(encoding='utf-8')
+        lines = content.split('\n')
+        current_day = None
+        task_counter = 0
+        target_task_id = None
+
+        for line in lines:
+            day = reader._parse_day_header(line.strip())
+            if day is not None:
+                current_day = day
+                task_counter = 0
+                continue
+
+            task_match = MarkdownReader.TASK_PATTERN.match(line)
+            if task_match and current_day == today.day:
+                task_counter += 1
+                if task_counter == number:
+                    target_task_id = f"{today.year}-{parsed.quarter}-{today.month:02d}-{today.day:02d}-{task_counter}"
+                    break
+
+        if not target_task_id:
+            return f"错误: 找不到今日第 {number} 项任务"
+
+        task_id = target_task_id
 
     # 解析 task_id 获取文件路径
     try:
@@ -200,7 +247,9 @@ def update_task(task_id: str, status: Optional[str] = None) -> str:
 
             writer = MarkdownWriter(file_path)
             reader = MarkdownReader(file_path)
+            results = []
 
+            # 更新状态
             if status:
                 new_status = TaskStatus.COMPLETED if status.lower() in ["completed", "done", "完成"] else TaskStatus.PENDING
                 success = writer.update_task_status(task_id, new_status)
@@ -219,14 +268,34 @@ def update_task(task_id: str, status: Optional[str] = None) -> str:
 
                             if all_completed:
                                 writer.update_task_status(parent.id, TaskStatus.COMPLETED)
-                                return f"任务状态已更新为: {new_status.value}\n🎉 所有子任务已完成，父任务「{parent.content}」已自动标记为完成！"
+                                results.append(f"🎉 所有子任务已完成，父任务「{parent.content}」已自动标记为完成")
 
                 if success:
-                    return f"任务状态已更新为: {new_status.value}"
+                    results.append(f"状态已更新为: {new_status.value}")
                 else:
-                    return "更新任务状态失败"
+                    results.append("更新任务状态失败")
 
-            return "任务已更新"
+            # 更新预估时间
+            if estimated_minutes is not None:
+                # 0 表示移除预估时间
+                estimate_value = None if estimated_minutes == 0 else estimated_minutes
+                success = writer.update_task_estimate(task_id, estimate_value)
+                if success:
+                    if estimate_value is None:
+                        results.append("已移除预估时间")
+                    else:
+                        hours = estimate_value / 60
+                        if hours >= 1:
+                            time_str = f"{hours:.0f}小时" if hours == int(hours) else f"{hours:.1f}小时"
+                        else:
+                            time_str = f"{estimate_value}分钟"
+                        results.append(f"预估时间已更新为: {time_str}")
+                else:
+                    results.append("更新预估时间失败")
+
+            if results:
+                return f"任务 {original_task_ref} 更新结果:\n" + "\n".join(f"  - {r}" for r in results)
+            return "任务已更新（无变更）"
         else:
             return f"错误: 无效的 task_id 格式: {task_id}"
     except Exception as e:
@@ -574,11 +643,17 @@ def delete_task(task_ref: str) -> str:
             task_ref_display = task_ref
 
         # 解析 task_id 获取文件路径
+        # task_id 格式: 2026-Q1-03-13-1 或 2026-1-03-13-1
         parts = task_id.split("-")
-        if len(parts) >= 4:
+        if len(parts) >= 5:
             year = parts[0]
-            quarter = parts[1].replace("Q", "") if "Q" in parts[1] else parts[1]
-            month = parts[2] if "Q" in parts[1] else parts[1]
+            # 支持 Q1 和 1 两种格式
+            if "Q" in parts[1]:
+                quarter = parts[1].replace("Q", "")
+                month = parts[2]
+            else:
+                quarter = parts[1]
+                month = parts[2]
 
             month_names = {
                 "01": "01-January", "02": "02-February", "03": "03-March",
@@ -590,7 +665,7 @@ def delete_task(task_ref: str) -> str:
             file_path = config.todo_root / year / f"Q{quarter}" / f"{month_file}.md"
 
             if not file_path.exists():
-                return f"错误: 找不到任务文件"
+                return f"错误: 找不到任务文件 {file_path}"
 
             writer = MarkdownWriter(file_path)
             success = writer.delete_task(task_id)
@@ -600,6 +675,6 @@ def delete_task(task_ref: str) -> str:
             else:
                 return f"错误: 删除任务失败，可能找不到该任务"
         else:
-            return f"错误: 无效的任务引用格式: {task_ref}"
+            return f"错误: 无效的任务引用格式: {task_ref} (需要5部分)"
     except Exception as e:
         return f"错误: {str(e)}"
