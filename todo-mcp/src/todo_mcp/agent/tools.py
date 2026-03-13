@@ -86,19 +86,14 @@ def get_today() -> str:
     lines = content.split('\n')
     current_day = None
     task_counter = 0
-    seen_today = False  # 标记是否已经处理过今日区块
 
     for line in lines:
         day = reader._parse_day_header(line.strip())
         if day is not None:
-            # 如果遇到新日期且已经处理过今日，跳过后续今日区块
-            if day == today.day and seen_today:
-                current_day = -1  # 设为无效值，跳过后续同日任务
-                continue
-            if day == today.day:
-                seen_today = True
             current_day = day
-            task_counter = 0
+            # 只在切换到不同日期时重置计数器
+            if current_day != today.day:
+                task_counter = 0
             continue
 
         task_match = MarkdownReader.TASK_PATTERN.match(line.strip())
@@ -212,18 +207,13 @@ def update_task(
         current_day = None
         task_counter = 0
         target_task_id = None
-        seen_today = False
 
         for line in lines:
             day = reader._parse_day_header(line.strip())
             if day is not None:
-                if day == today.day and seen_today:
-                    current_day = -1
-                    continue
-                if day == today.day:
-                    seen_today = True
                 current_day = day
-                task_counter = 0
+                if current_day != today.day:
+                    task_counter = 0
                 continue
 
             task_match = MarkdownReader.TASK_PATTERN.match(line)
@@ -631,18 +621,13 @@ def delete_task(task_ref: str) -> str:
             current_day = None
             task_counter = 0
             target_task_id = None
-            seen_today = False
 
             for line in lines:
                 day = reader._parse_day_header(line.strip())
                 if day is not None:
-                    if day == today.day and seen_today:
-                        current_day = -1
-                        continue
-                    if day == today.day:
-                        seen_today = True
                     current_day = day
-                    task_counter = 0
+                    if current_day != today.day:
+                        task_counter = 0
                     continue
 
                 task_match = MarkdownReader.TASK_PATTERN.match(line)
