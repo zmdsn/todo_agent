@@ -144,8 +144,13 @@ class TodoMCPServer:
             parts = task_id.split("-")
             if len(parts) >= 4:
                 year = parts[0]
-                quarter = parts[1].replace("Q", "") if "Q" in parts[1] else parts[1]
-                month = parts[2] if "Q" in parts[1] else parts[1]
+                # 支持 Q1 和 1 两种格式
+                if "Q" in parts[1]:
+                    quarter = parts[1].replace("Q", "")
+                    month = parts[2]
+                else:
+                    quarter = parts[1]
+                    month = parts[2]
                 # 找到月份文件
                 month_names = {
                     "01": "01-January", "02": "02-February", "03": "03-March",
@@ -303,8 +308,13 @@ class TodoMCPServer:
             parts = task_id.split("-")
             if len(parts) >= 4:
                 year = parts[0]
-                quarter = parts[1].replace("Q", "") if "Q" in parts[1] else parts[1]
-                month = parts[2] if "Q" in parts[1] else parts[1]
+                # 支持 Q1 和 1 两种格式
+                if "Q" in parts[1]:
+                    quarter = parts[1].replace("Q", "")
+                    month = parts[2]
+                else:
+                    quarter = parts[1]
+                    month = parts[2]
 
                 month_names = {
                     "01": "01-January", "02": "02-February", "03": "03-March",
@@ -343,8 +353,13 @@ class TodoMCPServer:
             parts = task_id.split("-")
             if len(parts) >= 4:
                 year = parts[0]
-                quarter = parts[1].replace("Q", "") if "Q" in parts[1] else parts[1]
-                month = parts[2] if "Q" in parts[1] else parts[1]
+                # 支持 Q1 和 1 两种格式
+                if "Q" in parts[1]:
+                    quarter = parts[1].replace("Q", "")
+                    month = parts[2]
+                else:
+                    quarter = parts[1]
+                    month = parts[2]
 
                 month_names = {
                     "01": "01-January", "02": "02-February", "03": "03-March",
