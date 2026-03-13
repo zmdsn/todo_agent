@@ -160,7 +160,10 @@ def test_convert_openai_messages_empty():
 def client():
     """Create test client with OpenAI compat router."""
     from fastapi import FastAPI
-    from todo_mcp.api.openai_compat import router
+    from todo_mcp.api.openai_compat import router, set_server_api_key
+
+    # Disable API key authentication for tests
+    set_server_api_key(None)
 
     app = FastAPI()
     app.include_router(router)
