@@ -80,40 +80,116 @@ class MarkdownWriter:
         for subtask in subtasks:
             self.add_subtask(subtask, parent_task.content)
 
+    def _parse_task_id(self, task_id: str) -> Optional[dict]:
+        """解析 task_id 获取日期和序号信息"""
+        # 格式: {年}-Q{季}-{月}-{日}-{序号} 或 {年}-{季}-{月}-{日}-{序号}
+        match = re.match(r'^(\d+)-Q?(\d+)-(\d+)-(\d+)-(\d+)$', task_id)
+        if match:
+            return {
+                'year': int(match.group(1)),
+                'quarter': int(match.group(2)),
+                'month': int(match.group(3)),
+                'day': int(match.group(4)),
+                'index': int(match.group(5))
+            }
+        return None
+
     def update_task_status(self, task_id: str, status: TaskStatus) -> bool:
         """更新任务状态"""
         if not self.file_path.exists():
             return False
 
+        # 解析 task_id
+        parsed = self._parse_task_id(task_id)
+        if not parsed:
+            return False
+
+        target_day = parsed['day']
+        target_index = parsed['index']
+
         content = self.file_path.read_text(encoding='utf-8')
         lines = content.split('\n')
 
-        for i, line in enumerate(lines):
-            if re.match(r'^(\s*)(-|\*)\s+\[[ xX]\]', line):
-                if status == TaskStatus.COMPLETED:
-                    lines[i] = re.sub(r'\[ \]', '[x]', line)
-                else:
-                    lines[i] = re.sub(r'\[x\]', '[ ]', line, flags=re.IGNORECASE)
-                break
+        current_day = None
+        task_counter = 0
+        # 支持 "## 12日" 和 "#### 3/9" 两种格式
+        day_cn_pattern = re.compile(r'^#+\s+(\d{1,2})[日号]')
+        day_slash_pattern = re.compile(r'^#+\s+\d{1,2}/(\d{1,2})')
+        task_pattern = re.compile(r'^(\s*)(-|\*)\s+\[[ xX]\]')
 
-        self.file_path.write_text('\n'.join(lines), encoding='utf-8')
-        return True
+        for i, line in enumerate(lines):
+            # 检查日期标题
+            stripped = line.strip()
+            cn_match = day_cn_pattern.match(stripped)
+            slash_match = day_slash_pattern.match(stripped)
+            if cn_match:
+                current_day = int(cn_match.group(1))
+                continue
+            elif slash_match:
+                current_day = int(slash_match.group(1))
+                continue
+
+            # 检查任务
+            if task_pattern.match(line):
+                if current_day == target_day:
+                    task_counter += 1
+                    if task_counter == target_index:
+                        # 找到目标任务，更新状态
+                        if status == TaskStatus.COMPLETED:
+                            lines[i] = re.sub(r'\[ \]', '[x]', line)
+                        else:
+                            lines[i] = re.sub(r'\[x\]', '[ ]', line, flags=re.IGNORECASE)
+                        self.file_path.write_text('\n'.join(lines), encoding='utf-8')
+                        return True
+
+        return False
 
     def delete_task(self, task_id: str) -> bool:
         """删除任务"""
         if not self.file_path.exists():
             return False
 
+        # 解析 task_id
+        parsed = self._parse_task_id(task_id)
+        if not parsed:
+            return False
+
+        target_day = parsed['day']
+        target_index = parsed['index']
+
         content = self.file_path.read_text(encoding='utf-8')
         lines = content.split('\n')
         new_lines = []
+
+        current_day = None
         task_counter = 0
+        # 支持 "## 12日" 和 "#### 3/9" 两种格式
+        day_cn_pattern = re.compile(r'^#+\s+(\d{1,2})[日号]')
+        day_slash_pattern = re.compile(r'^#+\s+\d{1,2}/(\d{1,2})')
+        task_pattern = re.compile(r'^(\s*)(-|\*)\s+\[[ xX]\]')
 
         for line in lines:
-            if re.match(r'^(\s*)(-|\*)\s+\[[ xX]\]', line):
-                task_counter += 1
-                if task_counter == 1:  # 简化：删除第一个任务
-                    continue
+            # 检查日期标题
+            stripped = line.strip()
+            cn_match = day_cn_pattern.match(stripped)
+            slash_match = day_slash_pattern.match(stripped)
+            if cn_match:
+                current_day = int(cn_match.group(1))
+                new_lines.append(line)
+                continue
+            elif slash_match:
+                current_day = int(slash_match.group(1))
+                new_lines.append(line)
+                continue
+
+            # 检查任务
+            if task_pattern.match(line):
+                if current_day == target_day:
+                    task_counter += 1
+                    if task_counter == target_index:
+                        # 跳过要删除的任务
+                        continue
+
             new_lines.append(line)
 
         self.file_path.write_text('\n'.join(new_lines), encoding='utf-8')
