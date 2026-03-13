@@ -97,13 +97,13 @@ class TodoMCPServer:
                 continue
 
             # 检查任务
-            task_match = MarkdownReader.TASK_PATTERN.match(line.strip())
+            task_match = MarkdownReader.TASK_PATTERN.match(line)
             if task_match and current_day == today.day:
                 task_counter += 1
-                status = TaskStatus.COMPLETED if task_match.group(2).lower() == 'x' else TaskStatus.PENDING
+                status = TaskStatus.COMPLETED if task_match.group(3).lower() == 'x' else TaskStatus.PENDING
                 task = Task(
                     id=f"{today.year}-{parsed.quarter}-{today.month:02d}-{today.day:02d}-{task_counter}",
-                    content=task_match.group(3).strip(),
+                    content=task_match.group(4).strip(),
                     status=status,
                     location=str(file_path)
                 )
