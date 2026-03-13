@@ -123,10 +123,17 @@ class MarkdownWriter:
             cn_match = day_cn_pattern.match(stripped)
             slash_match = day_slash_pattern.match(stripped)
             if cn_match:
-                current_day = int(cn_match.group(1))
+                new_day = int(cn_match.group(1))
+                # 只在切换到不同日期时重置计数器
+                if current_day != new_day:
+                    task_counter = 0
+                current_day = new_day
                 continue
             elif slash_match:
-                current_day = int(slash_match.group(1))
+                new_day = int(slash_match.group(1))
+                if current_day != new_day:
+                    task_counter = 0
+                current_day = new_day
                 continue
 
             # 检查任务
@@ -174,11 +181,17 @@ class MarkdownWriter:
             cn_match = day_cn_pattern.match(stripped)
             slash_match = day_slash_pattern.match(stripped)
             if cn_match:
-                current_day = int(cn_match.group(1))
+                new_day = int(cn_match.group(1))
+                if current_day != new_day:
+                    task_counter = 0
+                current_day = new_day
                 new_lines.append(line)
                 continue
             elif slash_match:
-                current_day = int(slash_match.group(1))
+                new_day = int(slash_match.group(1))
+                if current_day != new_day:
+                    task_counter = 0
+                current_day = new_day
                 new_lines.append(line)
                 continue
 
@@ -231,10 +244,16 @@ class MarkdownWriter:
             cn_match = day_cn_pattern.match(stripped)
             slash_match = day_slash_pattern.match(stripped)
             if cn_match:
-                current_day = int(cn_match.group(1))
+                new_day = int(cn_match.group(1))
+                if current_day != new_day:
+                    task_counter = 0
+                current_day = new_day
                 continue
             elif slash_match:
-                current_day = int(slash_match.group(1))
+                new_day = int(slash_match.group(1))
+                if current_day != new_day:
+                    task_counter = 0
+                current_day = new_day
                 continue
 
             # 检查任务
