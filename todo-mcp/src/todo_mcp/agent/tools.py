@@ -406,6 +406,7 @@ def get_all_tools():
         get_today,
         list_plans,
         update_task,
+        delete_task,
         get_progress,
         analyze_status,
         suggest_schedule,
@@ -509,3 +510,47 @@ def add_task_with_split(
         "time_expr": time_expr,
         "priority": priority
     })
+
+
+@tool
+def delete_task(task_id: str) -> str:
+    """删除指定任务。
+
+    Args:
+        task_id: 要删除的任务ID
+
+    Returns:
+        操作结果消息
+    """
+    config = _get_config()
+
+    try:
+        parts = task_id.split("-")
+        if len(parts) >= 4:
+            year = parts[0]
+            quarter = parts[1].replace("Q", "") if "Q" in parts[1] else parts[1]
+            month = parts[2] if "Q" in parts[1] else parts[1]
+
+            month_names = {
+                "01": "01-January", "02": "02-February", "03": "03-March",
+                "04": "04-April", "05": "05-May", "06": "06-June",
+                "07": "07-July", "08": "08-August", "09": "09-September",
+                "10": "10-October", "11": "11-November", "12": "12-December"
+            }
+            month_file = month_names.get(month, f"{month}-Month")
+            file_path = config.todo_root / year / f"Q{quarter}" / f"{month_file}.md"
+
+            if not file_path.exists():
+                return f"错误: 找不到任务文件"
+
+            writer = MarkdownWriter(file_path)
+            success = writer.delete_task(task_id)
+
+            if success:
+                return f"✅ 已删除任务: {task_id}"
+            else:
+                return f"错误: 删除任务失败，可能找不到该任务"
+        else:
+            return f"错误: 无效的 task_id 格式: {task_id}"
+    except Exception as e:
+        return f"错误: {str(e)}"

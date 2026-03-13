@@ -9,7 +9,7 @@ def test_get_all_tools():
     from todo_mcp.agent import get_all_tools
 
     tools = get_all_tools()
-    assert len(tools) == 10
+    assert len(tools) == 11
 
     tool_names = [t.name for t in tools]
     assert "add_task" in tool_names
@@ -17,6 +17,7 @@ def test_get_all_tools():
     assert "suggest_schedule" in tool_names
     assert "estimate_task" in tool_names
     assert "split_task" in tool_names
+    assert "delete_task" in tool_names
 
 
 def test_system_prompt():
